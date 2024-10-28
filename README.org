@@ -19,7 +19,7 @@ available with the =y= prefix.
 ** Insert Typst Code
 
 Typst code can be directly used within org-mode by using the
-=#+TYPST:=. The provided string is not escaped by the exporter and is
+=#+TYPST:= or =#+typst-ts:=. The provided string is not escaped by the exporter and is
 put directly into the output file.
 
 #+BEGIN_SRC org
@@ -29,7 +29,7 @@ put directly into the output file.
 Alternatively use an export block.
 
 #+BEGIN_SRC org
-,#+BEGIN_EXPORT typst
+,#+BEGIN_EXPORT typst-ts
 #set page(paper: "a4")
 ,#+END_EXPORT
 #+END_SRC
