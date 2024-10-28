@@ -129,7 +129,7 @@ Note that the support for images is very limited within Typest. See
 https://typst.app/docs/reference/visualize/image/ supprted types."
   :group 'org-export-typst
   :type '(alist :key-type (string :tag "Type")
-		            :value-type (regexp :tag "Path")))
+		:value-type (regexp :tag "Path")))
 
 ;; Export
 (org-export-define-backend 'typst
@@ -184,8 +184,8 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
   :menu-entry
   '(?y "Export to Typst"
        ((?F "As Typst buffer" org-typst-export-as-typst)
-	    (?f "As Typst file" org-typst-export-to-typst)
-	    (?p "As PDF file" org-typst-export-to-pdf)))
+	(?f "As Typst file" org-typst-export-to-typst)
+	(?p "As PDF file" org-typst-export-to-pdf)))
   :options-alist
   '((:typst-format-drawer-function nil nil org-typst-format-drawer-function)
     (:typst-format-inlinetask-function nil nil org-typst-format-inlinetask-function)))
@@ -206,8 +206,8 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
 
 (defun org-typst-drawer (drawer contents info)
   (let* ((name (org-element-property :drawer-name drawer))
-	       (output (funcall (plist-get info :typst-format-drawer-function)
-			                    name contents)))
+	 (output (funcall (plist-get info :typst-format-drawer-function)
+			  name contents)))
     (org-typst--label output drawer info)))
 
 (defun org-typst-dynamic-block (_dynamic-block contents _info)
@@ -221,9 +221,15 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
 (defun org-typst-example-block (example-block contents info)
   (org-typst--raw contents example-block info nil t))
 
+;; (defun org-typst-export-block (export-block _contents _info)
+;;   (when (member (org-element-property :type export-block) '("TYPST" "TYP"))
+;;     (org-remove-indentation (org-element-property :value export-block))))
+
 (defun org-typst-export-block (export-block _contents _info)
-  (when (member (org-element-property :type export-block) '("TYPST" "TYP"))
-    (org-remove-indentation (org-element-property :value export-block))))
+  (when (member (org-element-property :type export-block) '("TYPST" "TYP" "TYPST-TS"))
+    (let ((value (org-element-property :value export-block)))
+      (when (stringp value)
+        (org-remove-indentation value)))))
 
 (defun org-typst-export-snippet (export-snippet _contents _info)
   (when (eq (org-export-snippet-backend export-snippet) 'typst)
@@ -273,17 +279,17 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
 
 (defun org-typst-inlinetask (inlinetask contents info)
   (let ((title (org-export-data (org-element-property :title inlinetask) info))
-	      (todo (and (plist-get info :with-todo-keywords)
-		               (let ((todo (org-element-property :todo-keyword inlinetask)))
-		                 (and todo (org-export-data todo info)))))
-	      (todo-type (org-element-property :todo-type inlinetask))
-	      (tags (and (plist-get info :with-tags)
-		               (org-export-get-tags inlinetask info)))
-	      (priority (and (plist-get info :with-priority)
-		                   (org-element-property :priority inlinetask)))
-	      (contents (org-typst--label contents inlinetask info)))
+	(todo (and (plist-get info :with-todo-keywords)
+		   (let ((todo (org-element-property :todo-keyword inlinetask)))
+		     (and todo (org-export-data todo info)))))
+	(todo-type (org-element-property :todo-type inlinetask))
+	(tags (and (plist-get info :with-tags)
+		   (org-export-get-tags inlinetask info)))
+	(priority (and (plist-get info :with-priority)
+		       (org-element-property :priority inlinetask)))
+	(contents (org-typst--label contents inlinetask info)))
     (funcall (plist-get info :typst-format-inlinetask-function)
-	           todo todo-type priority title tags contents info)))
+	     todo todo-type priority title tags contents info)))
 
 (defun org-typst-italic (_italic contents _info)
   (format "#emph[%s]" contents))
@@ -308,17 +314,18 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
     (cond
      ((string-equal key "TYPST") value)
      ((string-equal key "TYP") value)
+     ((string-equal key "typst-ts") value)
      ((string-equal key "TOC")
       (cond
-	     ((string-match-p "\\<headlines\\>" value)
-	      (let* ((localp (string-match-p "\\<local\\>" value))
-		           (parent (org-element-lineage keyword 'headline))
-		           (level (if (not (and localp parent)) 0
-			                  (org-export-get-relative-level parent info)))
-		           (depth
-		            (and (string-match "\\<[0-9]+\\>" value)
-			               (+ (string-to-number (match-string 0 value)) level))))
-	        (if (and localp parent)
+       ((string-match-p "\\<headlines\\>" value)
+	(let* ((localp (string-match-p "\\<local\\>" value))
+	       (parent (org-element-lineage keyword 'headline))
+	       (level (if (not (and localp parent)) 0
+			(org-export-get-relative-level parent info)))
+	       (depth
+		(and (string-match "\\<[0-9]+\\>" value)
+		     (+ (string-to-number (match-string 0 value)) level))))
+	  (if (and localp parent)
               (format "#context {
   let before = query(
     selector(heading).before(here(), inclusive: true),
@@ -351,8 +358,8 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
                 (format "#outline(title: none, depth: %s)" depth)
               "#outline(title: none)"))))
        ((string-match-p "\\<figures\\>" value) "#outline(title: none, target: figure.where(kind: image))")
-	     ((string-match-p "\\<tables\\>" value) "#outline(title: none, target: figure.where(kind: table))")
-	     ((string-match-p "\\<listings\\>" value) "#outline(title: none, target: figure.where(kind: raw))"))))))
+       ((string-match-p "\\<tables\\>" value) "#outline(title: none, target: figure.where(kind: table))")
+       ((string-match-p "\\<listings\\>" value) "#outline(title: none, target: figure.where(kind: raw))"))))))
 
 (defun org-typst-line-break (_line-break _contents _info)
   ""
@@ -403,22 +410,47 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
 (defun org-typst-paragraph (_paragraph contents _info)
   contents)
 
+;; (defun org-typst-plain-list (plain-list contents info)
+;;   (pcase (org-element-property :type plain-list)
+;;     ;; NOTE: use a single list with a marker instead of a list with
+;;     ;;       list items
+;;     ('unordered
+;;      (mapconcat
+;;       (lambda (item)
+;;         (when (eq (car item) 'item)
+;;           (let ((marker (cdr (assoc (org-element-property :checkbox item) org-typst-checkbox-symbols)))
+;;                 (item-content (org-trim (org-export-data item info))))
+;;             (if marker
+;;                 (format "#list(marker: [%s], list.item[%s])" marker item-content)
+;;               (format "#list(list.item[%s])" item-content)))))
+;;       (cdr plain-list)))
+;;     ('ordered (format "#enum(%s)" contents))
+;;     ('descriptive (format "#terms(%s)" contents))
+;;     (_ nil)))
+
 (defun org-typst-plain-list (plain-list contents info)
+  "Convert PLAIN-LIST in Org mode to Typst syntax with CONTENTS and INFO for context."
   (pcase (org-element-property :type plain-list)
-    ;; NOTE: use a single list with a marker instead of a list with
-    ;;       list items
+    ;; Handle unordered lists
     ('unordered
      (mapconcat
       (lambda (item)
         (when (eq (car item) 'item)
-          (let ((marker (cdr (assoc (org-element-property :checkbox item) org-typst-checkbox-symbols)))
-                (item-content (org-trim (org-export-data item info))))
+          (let* ((checkbox (org-element-property :checkbox item))
+                 (marker (cdr (assoc checkbox org-typst-checkbox-symbols)))
+                 (item-content (org-trim (org-export-data (org-element-contents item) info))))
             (if marker
                 (format "#list(marker: [%s], list.item[%s])" marker item-content)
               (format "#list(list.item[%s])" item-content)))))
-      (cdr plain-list)))
-    ('ordered (format "#enum(%s)" contents))
-    ('descriptive (format "#terms(%s)" contents))
+      (org-element-contents plain-list)
+      "\n"))  ; Join the item strings with new lines
+    ;; Handle ordered lists
+    ('ordered
+     (format "#enum(%s)" contents))
+    ;; Handle descriptive lists
+    ('descriptive
+     (format "#terms(%s)" contents))
+    ;; Default case: return nil for unmatched types
     (_ nil)))
 
 (defun org-typst-plain-text (contents _info)
@@ -490,10 +522,10 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
 (defun org-typst-template (contents info)
   (let ((title (plist-get info :title))
         (author (when (plist-get info :with-author)
-			            (plist-get info :author)))
+		  (plist-get info :author)))
         (language (plist-get info :language))
         (email (when (plist-get info :with-email)
-		             (plist-get info :email)))
+		 (plist-get info :email)))
         (toc (plist-get info :with-toc)))
     (concat
      (when (or (car title) author)
@@ -643,8 +675,8 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
       (erase-buffer))
 
     (setq outfile (org-compile-file typfile (list process) "pdf"
-				                            (format "See %S for details" log-buf-name)
-				                            log-buf nil))
+				    (format "See %S for details" log-buf-name)
+				    log-buf nil))
     outfile))
 
 (require 'oc-typst)
