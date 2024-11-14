@@ -393,7 +393,7 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
              (link-path (org-typst--as-string (funcall resolve-headline-friendly target))))
         (if contents
             (format "#link(label(%s))[%s]" link-path (org-trim contents))
-          (format "#ref(label(%s))" link-path))))
+          (format "#link(label(%s), %s)" link-path link-raw))))
 
      ((member (org-element-property :type link) '("gls" "glsdef" "glsuse" "glspl"))
       ;; Send to org export functions
@@ -470,12 +470,11 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
 (defun org-typst-quote-block (quote-block contents info)
   (let ((attribution (org-export-read-attribute :attr_typst quote-block :author)))
     (when contents
-      (org-typst--figure
-       (format "#quote(block: true%s, %s)"
-               (if attribution (format ", attribution: %s" (org-typst--as-string attribution)) "")
-               (org-typst--as-string contents))
-       quote-block
-       info))))
+      
+      (format "#quote(block: true%s, %s)"
+              (if attribution (format ", attribution: [%s]" (org-typst--as-string attribution)) "")
+              (org-typst--as-string contents)))))
+
 
 (defun org-typst-radio-target (radio-target text info)
   (org-typst--label text radio-target info))
