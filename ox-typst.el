@@ -394,6 +394,10 @@ https://typst.app/docs/reference/visualize/image/ supprted types."
         (if contents
             (format "#link(label(%s))[%s]" link-path (org-trim contents))
           (format "#ref(label(%s))" link-path))))
+
+     ((member (org-element-property :type link) '("gls" "glsdef" "glsuse" "glspl"))
+      ;; Send to org export functions
+      (org-export-custom-protocol-maybe link contents 'typst info))
      ;; Other like HTTP (external)
      (t
       (format "#link(%s)%s"
